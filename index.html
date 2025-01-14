@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Quiz Generator</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+      }
+      .question {
+        margin-bottom: 20px;
+      }
+      .options {
+        margin-left: 20px;
+      }
+      button {
+        margin-top: 20px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Quiz</h1>
+    <div id="quiz"></div>
+
+    <h4>
+      Manfatli bulgan bulsa Sherzodjon Tursunov haqiga duo qilib quyinglar
+      <a target="_blank" href="https://t.me/developersh5">
+        menning telegramimi</a
+      >
+    </h4>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script>
+      let questions = [];
+      let currentQuestionGroup = 0;
+
+      // Excel faylini avtomatik o'qish
+      window.onload = function () {
+        const filePath = "aa.xls"; // Static path to your file
+        const xhr = new XMLHttpRequest();
+        xhr.open("GET", filePath, true);
+        xhr.responseType = "arraybuffer";
+
+        xhr.onload = function () {
+          const data = new Uint8Array(xhr.response);
+          const workbook = XLSX.read(data, { type: "array" });
+          const sheetName = workbook.SheetNames[0];
+          const sheet = workbook.Sheets[sheetName];
+          const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 }); // Qatorlarni massiv shaklida olish
+
+          // Savollar va javoblarni qayta ishlash
+          questions = [];
+          for (let i = 1; i < rows.length; i += 5) {
+            const question = rows[i][0]; // Savol
+            const options = [
+              rows[i + 1][0], // To'g'ri javob
+              rows[i + 2][0],
+              rows[i + 3][0],
+              rows[i + 4][0],
+            ];
+
+            questions.push({
+              question: question,
+              correctAnswer: rows[i + 1][0], // To'g'ri javobni belgilash
+              options: options,
+            });
+          }
+
+          generateQuizChoices(); // Generate quiz once the file is loaded
+        };
+
+        xhr.send();
+      };
+
+      // Quiz tanlash uchun oynani yaratish
+      function generateQuizChoices() {
+        const quizContainer = document.getElementById("quiz");
+        quizContainer.innerHTML = ""; // Oldingi quizni tozalash
+
+        const questionsInGroups = chunkArray(questions, 10);
+
+        if (questionsInGroups.length > 0) {
+          const choiceDiv = document.createElement("div");
+
+          questionsInGroups.forEach((_, index) => {
+            const quizChoice = document.createElement("button");
+            quizChoice.textContent = `${index + 1}-chi Quiz`;
+            quizChoice.onclick = function () {
+              currentQuestionGroup = index;
+              generateQuiz(
+                questionsInGroups[currentQuestionGroup],
+                currentQuestionGroup + 1
+              );
+            };
+            choiceDiv.appendChild(quizChoice);
+          });
+
+          quizContainer.appendChild(choiceDiv);
+        }
+      }
+
+      // 10 ta savoldan iborat quiz yaratish
+      function generateQuiz(group, quizNumber) {
+        const quizContainer = document.getElementById("quiz");
+        quizContainer.innerHTML = ""; // Oldingi quizni tozalash
+
+        const quizTitle = document.createElement("h2");
+        quizTitle.textContent = `Quiz ${quizNumber}`;
+        quizContainer.appendChild(quizTitle);
+
+        group.forEach((q, index) => {
+          // Variantlarni aralashtirish
+          const shuffledOptions = [...q.options].sort(
+            () => Math.random() - 0.5
+          );
+
+          const questionDiv = document.createElement("div");
+          questionDiv.classList.add("question");
+          questionDiv.innerHTML = `<p><strong>${index + 1}. ${
+            q.question
+          }</strong></p>`;
+
+          const optionsDiv = document.createElement("div");
+          optionsDiv.classList.add("options");
+
+          shuffledOptions.forEach((option) => {
+            const isCorrect =
+              option === q.correctAnswer ? "correct" : "incorrect";
+            optionsDiv.innerHTML += `
+                        <label>
+                            <input type="radio" name="q${index}" value="${isCorrect}" />
+                            ${option}
+                        </label><br>
+                    `;
+          });
+
+          questionDiv.appendChild(optionsDiv);
+          quizContainer.appendChild(questionDiv);
+        });
+
+        const submitButton = document.createElement("button");
+        submitButton.textContent = "Submit Quiz";
+        submitButton.onclick = checkAnswers;
+        quizContainer.appendChild(submitButton);
+      }
+
+      // Javoblarni tekshirish
+      function checkAnswers() {
+        let correctCount = 0;
+
+        const selectedOptions = document.querySelectorAll(
+          'input[type="radio"]:checked'
+        );
+        selectedOptions.forEach((selectedOption) => {
+          if (selectedOption.value === "correct") {
+            correctCount++;
+          }
+        });
+
+        alert(`Sizning natijangiz: ${correctCount}/10`);
+
+        // Re-generate quiz number buttons after checking answers
+        generateQuizChoices();
+      }
+
+      // Arrayni 10 ta elementga bo'lish
+      function chunkArray(array, size) {
+        const result = [];
+        for (let i = 0; i < array.length; i += size) {
+          result.push(array.slice(i, i + size));
+        }
+        return result;
+      }
+    </script>
+  </body>
+</html>
